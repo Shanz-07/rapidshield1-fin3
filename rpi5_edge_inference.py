@@ -78,10 +78,21 @@ GSM_SERIAL_PORT = "/dev/serial0"
 GSM_BAUD_RATE = 9600
 EMERGENCY_CONTACTS = []
 
-def fetch_emergency_contacts_from_dashboard():
+# Map anomaly types (from YOLO model) to relevant station IDs (from setup page)
+# This determines which authorities get SMS based on the detected crisis
+ANOMALY_TO_STATIONS = {
+    "fire_smoke":           ["fire", "hospital", "ambulance", "police"],
+    "electrical_spark":     ["fire", "hospital", "ambulance"],
+    "flood_water":          ["shelter", "disaster", "ambulance"],
+    "explosion":            ["fire", "police", "ambulance", "hospital", "disaster"],
+    "unauthorized_vehicle": ["police", "disaster"],
+}
+
+def fetch_emergency_contacts_from_dashboard(alert_type=None):
     """Fetch phone numbers configured in the dashboard setup page.
     The setup page stores station data in the dashboard's /api/config/stations endpoint.
-    Falls back to hardcoded contacts if the dashboard is unreachable.
+    If alert_type is given, only returns contacts relevant to that anomaly.
+    Falls back to all contacts if no mapping exists.
     """
     global EMERGENCY_CONTACTS
     try:
@@ -92,16 +103,38 @@ def fetch_emergency_contacts_from_dashboard():
         if resp.status_code == 200:
             data = resp.json()
             stations = data.get("stations", [])
+
+            # Get relevant station IDs for this anomaly type
+            relevant_ids = None
+            if alert_type:
+                relevant_ids = ANOMALY_TO_STATIONS.get(alert_type)
+
             contacts = []
             for station in stations:
                 phone = station.get("phone", "").strip()
                 name = station.get("name", station.get("label", "Unknown"))
-                if phone:
-                    contacts.append({"name": name, "number": phone})
+                station_id = station.get("id", "")
+
+                if not phone:
+                    continue
+
+                # If we have a mapping, only include relevant stations
+                if relevant_ids and station_id not in relevant_ids:
+                    continue
+
+                contacts.append({
+                    "name": name,
+                    "number": phone,
+                    "station_id": station_id,
+                })
+
             if contacts:
                 EMERGENCY_CONTACTS = contacts
-                log.info(f"Loaded {len(contacts)} emergency contacts from dashboard setup")
+                log.info(f"Loaded {len(contacts)} emergency contacts from dashboard "
+                         f"(filtered for: {alert_type or 'ALL'})")
                 return
+            else:
+                log.warning(f"No matching contacts found for anomaly: {alert_type}")
     except Exception as e:
         log.warning(f"Could not fetch contacts from dashboard: {e}")
 
@@ -111,6 +144,7 @@ def fetch_emergency_contacts_from_dashboard():
             {"name": "Emergency Services", "number": "+911234567890"},
         ]
         log.warning("Using fallback emergency contacts")
+
 
 # ----- Cooldowns -----
 ALERT_COOLDOWN_SECONDS = 30
@@ -129,7 +163,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("/home/pi/rapidshield.log", mode="a"),
+        logging.FileHandler("/home/shanz/rapidshield.log", mode="a"),
     ]
 )
 log = logging.getLogger("RapidShield")
@@ -218,9 +252,7 @@ def broadcast_clear_to_devices():
 
 def send_gsm_sms(phone_number, message):
     """TEST MODE — prints SMS to console instead of sending via serial."""
-    log.info(f"[TEST] Would send SMS to {phone_number}:")
-    for line in message.split('\n'):
-        log.info(f"  | {line}")
+    log.info(f"[TEST] SMS → {phone_number} ✓")
     return True
 
 def dispatch_external_authorities(triggered_by="EMPLOYEE"):
@@ -233,28 +265,24 @@ def dispatch_external_authorities(triggered_by="EMPLOYEE"):
         return
     last_sos_time = now
 
-    log.critical("═" * 50)
-    log.critical(f"SOS TRIGGERED BY {triggered_by} — DISPATCHING HELP")
-    log.critical("═" * 50)
+    log.critical(f"SOS BY {triggered_by} — DISPATCHING")
 
-    # Fetch latest phone numbers from dashboard setup page
-    fetch_emergency_contacts_from_dashboard()
+    # Fetch latest phone numbers from dashboard setup page (filtered by anomaly type)
+    fetch_emergency_contacts_from_dashboard(alert_type=current_alert_type)
 
     sms_body = (
-        f"[RAPIDSHIELD SOS]\n"
-        f"Crisis: {current_alert_type.replace('_', ' ').upper()}\n"
-        f"Confidence: {current_alert_confidence:.0%}\n"
-        f"Location: {VENUE_NAME}\n"
-        f"Address: {VENUE_ADDRESS}\n"
-        f"Floor: {FLOOR}, Zone: {ZONE}\n"
-        f"GPS: {GPS_LOCATION['lat']}, {GPS_LOCATION['lng']}\n"
-        f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        f"Triggered by: {triggered_by}\n"
-        f"IMMEDIATE RESPONSE REQUESTED"
+        f"[RAPIDSHIELD SOS] {current_alert_type.replace('_', ' ').upper()}"
+        f" | {VENUE_NAME}, Floor {FLOOR} Zone {ZONE}"
+        f" | GPS: {GPS_LOCATION['lat']},{GPS_LOCATION['lng']}"
+        f" | {datetime.now().strftime('%H:%M:%S')} | RESPOND NOW"
     )
 
+    # Log once: summary of all recipients
+    recipients = ", ".join(f"{c['name']}({c['number']})" for c in EMERGENCY_CONTACTS)
+    log.info(f"SMS to: {recipients}")
+    log.info(f"MSG: {sms_body}")
+
     for contact in EMERGENCY_CONTACTS:
-        log.info(f"SMS → {contact['name']} ({contact['number']})")
         threading.Thread(
             target=send_gsm_sms,
             args=(contact["number"], sms_body),

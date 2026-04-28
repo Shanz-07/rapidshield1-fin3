@@ -222,28 +222,8 @@ export function AlertOverlay() {
                <span className="text-xs font-bold tracking-wider">Abort False Alarm</span>
              </button>
 
-             <div className="space-y-2">
-               <button className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white p-4 rounded-lg font-bold transition-colors shadow-[0_0_15px_rgba(124,58,237,0.3)]">
-                 <span className="material-symbols-outlined text-sm animate-pulse">campaign</span>
-                 <span className="text-xs tracking-wider">Manual PA Override</span>
-               </button>
-               {routing.paMessage && (
-                 <div className="text-[10px] text-slate-400 bg-slate-900 p-2 rounded border-l-2 border-violet-500">
-                   Auto: &ldquo;{routing.paMessage}&rdquo;
-                 </div>
-               )}
-             </div>
 
-             <div className="grid grid-cols-2 gap-2">
-               <button className="flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 p-3 rounded-lg border border-slate-700 transition-colors">
-                 <span className="material-symbols-outlined text-[20px] text-violet-400">route</span>
-                 <span className="text-[10px] font-bold tracking-wider">Evac Route</span>
-               </button>
-               <button className="flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 p-3 rounded-lg border border-slate-700 transition-colors">
-                 <span className="material-symbols-outlined text-[20px] text-red-400">add_alert</span>
-                 <span className="text-[10px] font-bold tracking-wider">Force Escalate</span>
-               </button>
-             </div>
+
              
              {!sosDispatched && (
                <div className="mt-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-center">

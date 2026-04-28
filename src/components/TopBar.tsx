@@ -55,14 +55,8 @@ export function TopBar() {
 
         {/* Mobile status dot */}
         <span className={`md:hidden w-2 h-2 rounded-full ${isRPi5Online ? 'bg-emerald-500 animate-pulse' : 'bg-error'}`}></span>
-        
-        {/* Notifications */}
-        <button className="relative p-1.5 rounded-lg hover:bg-surface-container-high transition-colors">
-          <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-          {state.logs.length > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-secondary-container dark:bg-error"></span>
-          )}
-        </button>
+
+
 
         {/* Logout / Reset (Testing) */}
         <button 
