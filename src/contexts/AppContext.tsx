@@ -28,24 +28,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState | null>(null);
 
   useEffect(() => {
-    // Initial fetch
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        // We just need initial structure, SSE will overwrite
-      });
-
-    const eventSource = new EventSource('/api/sse');
-    
-    eventSource.onmessage = (event) => {
-      const parsed = JSON.parse(event.data);
-      if (parsed.type === 'STATE_UPDATE') {
-        setState(parsed.state);
+    // Fetch state immediately on mount
+    const fetchState = async () => {
+      try {
+        const res = await fetch('/api/state', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setState(data);
+        }
+      } catch {
+        // Dashboard unreachable, keep last state
       }
     };
 
+    fetchState();
+
+    // Poll every 2 seconds for state updates (SSE doesn't work on Vercel serverless)
+    const interval = setInterval(fetchState, 2000);
+
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, []);
 

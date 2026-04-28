@@ -49,7 +49,7 @@ UDP_PORT = 9999                 # Port for alert broadcasts
 SOS_HTTP_PORT = 8080            # Port to receive SOS from employee devices
 
 # ----- Dashboard (runs on separate machine or same LAN) -----
-DASHBOARD_URL = "http://192.168.31.117:3000/api/alert/incoming"
+DASHBOARD_URL = "https://rapidshield1-fin3.vercel.app/api/alert/incoming"
 
 # ----- Camera & Inference -----
 CAMERA_ID = "CAM_FLOOR1"

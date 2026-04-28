@@ -188,9 +188,8 @@ if (!serverState.sosDispatches) {
   serverState.sosDispatches = [];
 }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForState.serverState = serverState;
-}
+// Persist on global for warm instance reuse (works in both dev hot-reload and Vercel serverless warm starts)
+globalForState.serverState = serverState;
 
 export type SSEClient = {
   id: string;
@@ -200,9 +199,7 @@ export type SSEClient = {
 // Keep track of connected SSE clients
 const globalForSSE = global as unknown as { sseClients: SSEClient[] };
 export const sseClients = globalForSSE.sseClients || [];
-if (process.env.NODE_ENV !== "production") {
-  globalForSSE.sseClients = sseClients;
-}
+globalForSSE.sseClients = sseClients;
 
 export function broadcastState() {
   const payload = JSON.stringify({

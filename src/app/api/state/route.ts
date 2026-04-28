@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverState, broadcastState, syncSpeakersWithEmployees } from '@/lib/store';
 
+export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/state — Returns the full server state for polling clients
+ */
+export async function GET() {
+  return NextResponse.json(serverState);
+}
+
 // RPi5 edge device — send CLEAR command when dashboard aborts an alert
 // Change this to the RPi5's IP reachable from the dashboard network
 const RPI5_CLEAR_URL = 'http://192.168.4.1:8080/clear';

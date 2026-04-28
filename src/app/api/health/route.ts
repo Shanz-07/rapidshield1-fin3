@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverState, broadcastState } from '@/lib/store';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/health — simple heartbeat check (used by RPi5 to confirm dashboard is reachable)
  */
